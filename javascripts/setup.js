@@ -1,103 +1,36 @@
 requirejs.config({ baseUrl: 'javascripts', paths: { jquery: '/javascripts/lib/jquery-1.10.2' } });
 
 requirejs([
-	'jquery',
-	'systems'
+	'analyzer',
+	'goods'
 ], function(
-	$,
-	SYSTEMS
-	//Promise already included
+	analyzer,
+	GOODS
 ) {
-	var TAX = 0.015;
-	var SYSTEM_IDS = [];
-	for(var systemId in SYSTEMS) { SYSTEM_IDS.push(systemId); }
+	var goodIndex = 0;
+	var GOOD_IDS = [];
+	for(var goodId in GOODS) { GOOD_IDS.push(+goodId); }
 
-	function setUpUI() {}
-	function waitForInput() {
-		return new Promise(function(resolve, reject) {
-			resolve(); //TODO
+	function analyzeAllGoods() {
+		analyzer.analyze({ goods: GOOD_IDS }, function() {
+			console.log("Done analyzing!");
 		});
 	}
-	function getOrders() {
-		console.log("Getting orders...");
-		return new Promise(function(resolve, reject) {
-			$.ajax({
-				url: "orders?systems=" + SYSTEM_IDS.join(","),
-				dataType: "json"
-			}).done(function(data) {
-				resolve(data);
-			});
-		});
-	}
-	function cleanOrders(orders) {
-		return orders.emd.result.map(function(order) {
-			return {
-				id: +order.row.orderID,
-				isBuyOrder: (order.row.buysell === 'b'),
 
-				//what's being bought/sold
-				good: +order.row.typeID,
-				price: +order.row.price,
-				amt: +order.row.volRemaining,
-				minAmt: +order.row.minVolume, //buy orders only
-				buyRange: (order.row.range === "-1" ? 0 : +order.row.range), //buy orders only
-
-				//where is the order
-				station: +order.row.stationID,
-				system: +order.row.solarsystemID,
-				region: +order.row.regionID,
-
-				//when does it expire
-				timeUntilExpiration: (new Date(order.row.expires)).getTime() - Date.now()
-			};
-		});
-	}
-	function logOrderStats(orders) {
-		var systemIds = [];
-		for(var i = 0; i < orders.length; i++) {
-			if(systemIds.indexOf(orders[i].system) === -1) {
-				systemIds.push(orders[i].system);
+	function analyzeNextGood() {
+		console.log("Analyzing " + GOODS[GOOD_IDS[goodIndex]].name + "!");
+		analyzer.analyze({ goods: [ GOOD_IDS[goodIndex] ] }, function() {
+			if(++goodIndex < GOOD_IDS.length) {
+				console.log("");
+				setTimeout(function() {
+					analyzeNextGood();
+				}, 200);
 			}
-		}
-		console.log("Found " + orders.length + " orders over " +
-			systemIds.length + " systems: " +
-			systemIds.map(function(id) { return SYSTEMS[id].name; }).join(", "));
-		return orders;
-	}
-	function findProfitableTrades(orders) {
-		var trades = [];
-		//for each buy order
-		for(var i = 0; i < orders.length; i++) {
-			if(orders[i].isBuyOrder) {
-				var buyOrder = orders[i];
-				//for each sell order
-				for(var j = 0; j < orders.length; j++) {
-					if(!orders[j].isBuyOrder) {
-						var sellOrder = orders[j];
-						//figure out if it's a profitable trade
-						if(buyOrder.good === sellOrder.good &&
-							buyOrder.price * (1 - TAX) > sellOrder.price) {
-							trades.push({ buyOrder: buyOrder, sellOrder: sellOrder });
-						}
-					}
-				}
+			else {
+				console.log("Done analyzing!");
 			}
-		}
-		console.log("Found " + trades.length + " profitable trades!");
+		});
 	}
-	function findBestRoute(trades) {
-		// assuming trades is an array of:
-		//	{ fromSystem: 1, toSystem: 2, profit: 3456, capacity: 100 ... }
-	}
-	function renderRoute(route) {}
 
-	//application flow
-	setUpUI();
-	waitForInput()
-		.then(getOrders)
-		.then(cleanOrders)
-		.then(logOrderStats)
-		.then(findProfitableTrades)
-		.then(findBestRoute)
-		.then(renderRoute);
+	analyzeAllGoods();
 });

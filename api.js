@@ -7,7 +7,7 @@ app.get('/orders', function(req, res) {
 		path: '/api/item_orders2.json?' +
 			'char_name=bridgs' +
 			'&buysell=a' +
-			'&type_ids=34' +
+			'&type_ids=' + req.query.goods +
 			'&solarsystem_ids=' + req.query.systems
 	}, function(response) {
 		var str = '';
