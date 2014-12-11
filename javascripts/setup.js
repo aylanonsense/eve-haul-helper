@@ -17,10 +17,12 @@ requirejs([
 		});
 	}
 	function getItemOrders() {
-		return new Promise(function(resolve, reject) { resolve([]); });
+		return new Promise(function(resolve, reject) {
+			$.ajax({ url: "itemOrders", dataType: "json" }).done(resolve);
+		});
 	}
 	function findProfitableTrades(itemOrders) {
-		console.log("itemorders");
+		console.log("itemorders", itemOrders);
 	}
 	function findBestRoute(trades) {
 		// assuming trades is an array of:
