@@ -3,16 +3,19 @@ define([
 	'server/routes-workflow/findProfitableTrades',
 	'server/routes-workflow/filterOutTrades',
 	'server/routes-workflow/findTradeRoutes',
-	'server/helper/ItemTypeLookup',
-	'server/helper/SystemJumpsLookup'
+	//'async!server/helper/ItemTypeLookup'
+	'server/helper/SystemLookup'
 ],
 function(
 	getMarketOrders,
 	findProfitableTrades,
 	filterOutTrades,
-	findTradeRoutes
+	findTradeRoutes,
+	//ItemTypeLookup
+	SystemLookup
 ) {
 	return function Main(app) {
+
 		function toNum(str) { return +str; }
 
 		//set up REST service for getting trade routes
@@ -43,7 +46,20 @@ function(
 				})
 				.then(function(routes) {
 					res.send(routes);
-				});
+				}).done();
 		});
+
+		for(var i = 0; i < SystemLookup.allSystemIds.length; i++) {
+			var id = SystemLookup.allSystemIds[i];
+			var jumps = SystemLookup.getJumpsBetween(30002187, id);
+			if(jumps >= 0) {
+				console.log("  " + SystemLookup.getById(30002187).name + " to " +
+					SystemLookup.getById(id).name + ": " + jumps + " jumps  (" +
+					SystemLookup.getRouteBetween(30002187, id).map(function(id) {
+						return SystemLookup.getById(id).name;
+					}).join(" -> ") + ")");
+			}
+		}
+		console.log("done");
 	};
 });

@@ -15,4 +15,4 @@ app.use('/client', express.static(__dirname + '/javascripts/client'));
 app.listen(process.env.PORT || 3000);
 
 //start server
-require('server/Main')(app);
+require('server/setup')(app);
