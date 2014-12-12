@@ -1,36 +1,52 @@
 requirejs.config({ baseUrl: 'javascripts', paths: { jquery: '/javascripts/lib/jquery-1.10.2' } });
 
 requirejs([
-	'analyzer',
-	'goods'
+	'analyzer'
 ], function(
-	analyzer,
-	GOODS
+	analyzer
 ) {
-	var goodIndex = 0;
-	var GOOD_IDS = [];
-	for(var goodId in GOODS) { GOOD_IDS.push(+goodId); }
 
-	function analyzeAllGoods() {
-		analyzer.analyze({ goods: GOOD_IDS }, function() {
-			console.log("Done analyzing!");
+	function getRecentOrders() {
+		console.log("Getting recent orders...");
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				url: "recent",
+				dataType: "json"
+			}).done(resolve);
 		});
 	}
+	function getUniqueGoodIds(orders) {
+		var goodIds = [];
+		orders = orders.emd.result.rowset.row;
+		for(var i = 0; i < orders.length; i++) {
+			if(goodIds.indexOf(orders[i].typeID) === -1) {
+				goodIds.push(orders[i].typeID);
+			}
+		}
+		console.log("Got " + orders.length + " orders of " + goodIds.length + " different goods!");
+		return goodIds;
+	}
 
-	function analyzeNextGood() {
-		console.log("Analyzing " + GOODS[GOOD_IDS[goodIndex]].name + "!");
-		analyzer.analyze({ goods: [ GOOD_IDS[goodIndex] ] }, function() {
-			if(++goodIndex < GOOD_IDS.length) {
-				console.log("");
+	function repeatedlyAnalyzeRandomGoods(goodIds, repeatsLeft, msUntilRepeat) {
+		if(typeof repeatsLeft !== 'number') { repeatsLeft = 90; }
+		if(typeof msUntilRepeat !== 'number') { msUntilRepeat = 500; }
+		var randomGoodIds = [];
+		for(var i = 0; i < 100; i++) {
+			randomGoodIds.push(goodIds[Math.floor(Math.random() * goodIds.length)]);
+		}
+		analyzer.analyze({ goods: randomGoodIds }).then(function() {
+			if(repeatsLeft > 0) {
 				setTimeout(function() {
-					analyzeNextGood();
-				}, 200);
+					repeatedlyAnalyzeRandomGoods(goodIds, repeatsLeft - 1, Math.min(msUntilRepeat * 2, 5000));
+				}, msUntilRepeat);
 			}
 			else {
-				console.log("Done analyzing!");
+				console.log("DONE!");
 			}
 		});
 	}
 
-	analyzeAllGoods();
+	getRecentOrders()
+		.then(getUniqueGoodIds)
+		.then(repeatedlyAnalyzeRandomGoods);
 });

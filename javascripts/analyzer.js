@@ -1,23 +1,24 @@
 define([
 	'jquery',
-	'systems'
+	'systems',
+	'goods'
 ], function(
 	$,
-	SYSTEMS
+	SYSTEMS,
+	GOODS
 	//Promise already included
 ) {
 	var TAX = 0.015;
-	var GOODS = null;
 	var SYSTEM_IDS = [];
+	var AVAILABLE_CAPITAL = 2000000;
 	for(var systemId in SYSTEMS) { SYSTEM_IDS.push(+systemId); }
 
-	function getOrders() {
-		console.log("Getting orders...");
+	function getOrders(goods) {
 		return new Promise(function(resolve, reject) {
 			$.ajax({
 				url: "orders?" +
 					"systems=" + SYSTEM_IDS.join(",") +
-					"&goods=" + GOODS.join(","),
+					"&goods=" + goods.join(","),
 				dataType: "json"
 			}).done(resolve);
 		});
@@ -75,8 +76,20 @@ define([
 						var sellOrder = orders[j];
 						//figure out if it's a profitable trade
 						if(buyOrder.good === sellOrder.good &&
-							buyOrder.price * (1 - TAX) > sellOrder.price) {
-							trades.push({ buyOrder: buyOrder, sellOrder: sellOrder });
+							buyOrder.price * (1 - TAX) > sellOrder.price &&
+							sellOrder.price < AVAILABLE_CAPITAL &&
+							buyOrder.timeUntilExpiration > 0 && sellOrder.timeUntilExpiration > 0) {
+							var maxAmountPurchasable = Math.floor(AVAILABLE_CAPITAL / sellOrder.price);
+							var amt = Math.min(buyOrder.amt, sellOrder.amt, maxAmountPurchasable);
+							var trade = {
+								buyOrder: buyOrder,
+								sellOrder: sellOrder,
+								amt: amt,
+								profit: Math.floor(amt * (buyOrder.price * (1 - TAX) - sellOrder.price))
+							};
+							if(trade.profit >= 10000) {
+								trades.push(trade);
+							}
 						}
 					}
 				}
@@ -85,19 +98,59 @@ define([
 		return trades;
 	}
 	function logTradeStats(trades) {
-		console.log("Found " + trades.length + " profitable trades!");
-		return trades;
+		if(trades.length === 0) {
+			return trades;
+		}
+		else {
+			console.log("Found " + trades.length + " profitable trades:");
+			trades.sort(function(a, b) { return b.profit - a.profit; });
+			console.log("                AMT GOOD                              PROFIT                           " +
+				"START                     PRICE                    DESTINATION               PRICE");
+			for(var i = 0; i < trades.length; i++) {
+				var trade = trades[i];
+				var buyOrder = trade.buyOrder;
+				var sellOrder = trade.sellOrder;
+				var amt = Math.min(buyOrder.amt, sellOrder.amt);
+				console.log("  Trade up to " +
+					rjust(amt, 5) + " " +
+					ljust(GOODS[buyOrder.good] ?
+						GOODS[buyOrder.good].name :
+						"<GOOD " + buyOrder.good + ">", 21) +
+					" for up to " +
+					rjust(trade.profit, 8) +
+					" ISK profit by buying from " + ljust(SYSTEMS[sellOrder.system].name, 18) +
+					" for " + rjust(Math.ceil(sellOrder.price), 8) + " ISK" +
+					" and hauling to " + ljust(SYSTEMS[buyOrder.system].name, 18) +
+					" for " + rjust(Math.floor(buyOrder.price), 8) + " ISK");
+			}
+			console.log("");
+			return trades;
+		}
+	}
+
+	//helper methods
+	function ljust(str, size) {
+		str = "" + str;
+		while(str.length < size) {
+			str += " ";
+		}
+		return str;
+	}
+	function rjust(str, size) {
+		str = "" + str;
+		while(str.length < size) {
+			str = " " + str;
+		}
+		return str;
 	}
 
 	return {
-		analyze: function(params, callback) {
-			GOODS = params.goods;
-			getOrders()
+		analyze: function(params) {
+			return getOrders(params.goods)
 				.then(cleanOrders)
 				.then(logOrderStats)
 				.then(findProfitableTrades)
-				.then(logTradeStats)
-				.then(callback);
+				.then(logTradeStats);
 		}
 	};
 });
