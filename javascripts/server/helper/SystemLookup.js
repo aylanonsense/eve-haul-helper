@@ -79,17 +79,22 @@ define([
 	}
 
 	function getRouteBetween(fromSystemId, toSystemId, security) {
-		var minSystemId = Math.min(fromSystemId, toSystemId);
-		var maxSystemId = Math.max(fromSystemId, toSystemId);
-		return ROUTE_LOOKUP[fromSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId] &&
+		if(fromSystemId <= toSystemId) {
+			var route = ROUTE_LOOKUP[fromSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId] &&
 				ROUTE_LOOKUP[fromSystemId][toSystemId].route || null;
+			return (route ? Array.prototype.slice.call(route).reverse() : null);
+		}
+		else {
+			return ROUTE_LOOKUP[toSystemId] && ROUTE_LOOKUP[toSystemId][fromSystemId] &&
+				ROUTE_LOOKUP[toSystemId][fromSystemId].route || null;
+		}
 	}
 
 	function getJumpsBetween(fromSystemId, toSystemId, security) {
 		var minSystemId = Math.min(fromSystemId, toSystemId);
 		var maxSystemId = Math.max(fromSystemId, toSystemId);
-		return ROUTE_LOOKUP[fromSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId] &&
-				ROUTE_LOOKUP[fromSystemId][toSystemId].dist || -1;
+		return ROUTE_LOOKUP[minSystemId] && ROUTE_LOOKUP[minSystemId][maxSystemId] &&
+				ROUTE_LOOKUP[minSystemId][maxSystemId].dist || -1;
 
 		/*
 		if(!loaded) {
