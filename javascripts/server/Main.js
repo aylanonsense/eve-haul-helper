@@ -51,7 +51,7 @@ function(
 
 		for(var i = 0; i < SystemLookup.allSystemIds.length; i++) {
 			var id = SystemLookup.allSystemIds[i];
-			var jumps = SystemLookup.getJumpsBetween(30002187, id);
+			var jumps = SystemLookup.getJumpsBetween(30002187, id, 10);
 			if(jumps >= 0) {
 				console.log("  " + SystemLookup.getById(30002187).name + " to " +
 					SystemLookup.getById(id).name + ": " + jumps + " jumps  (" +
