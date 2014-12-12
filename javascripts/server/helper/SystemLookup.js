@@ -31,11 +31,11 @@ define([
 		var largerId = Math.max(+rows[i].FROMSOLARSYSTEMID, +rows[i].TOSOLARSYSTEMID);
 		if(!ROUTE_LOOKUP[smallerId]) { ROUTE_LOOKUP[smallerId] = {}; }
 		if(!ROUTE_LOOKUP[smallerId][largerId]) {
-			ROUTE_LOOKUP[smallerId][largerId] = { dist: 1, route: [ largerId ] };
+			ROUTE_LOOKUP[smallerId][largerId] = { dist: 1, route: [] };
 		}
 		if(!ROUTE_LOOKUP[largerId]) { ROUTE_LOOKUP[largerId] = {}; }
 		if(!ROUTE_LOOKUP[largerId][smallerId]) {
-			ROUTE_LOOKUP[largerId][smallerId] = { dist: 1, route: [ smallerId ] };
+			ROUTE_LOOKUP[largerId][smallerId] = true;
 		}
 	}
 	console.log("Loaded " + rows.length + " solar system connections!");
@@ -43,38 +43,34 @@ define([
 	//repeatedly find more distant connections
 	for(var dist = 2; dist <= MAX_DIST_TO_PRECALCULATE; dist++) {
 		for(i = 0; i < SOLAR_SYSTEM_IDS.length; i++) {
+			//look at every solar syatem
 			var id = SOLAR_SYSTEM_IDS[i];
-			//for every system this solar system is connected to
-			var connections = ROUTE_LOOKUP[id];
-			for(var id2 in connections) {
-				if(connections[id2].dist === dist - 1) {
-					//it is also connected to all of that connection's 1-dist connections
-					var connections2 = ROUTE_LOOKUP[id2];
-					for(var id3 in connections2) {
-						if(id3 !== id && connections2[id3].dist === 1) {
-							var route;
-							if(!connections[id3] && connections[id2].route.indexOf(id3) === -1) {
-								route = Array.prototype.slice.call(connections[id2].route);
-								route.push(id3);
-								connections[id3] = {
-									dist: dist,
-									route: route
-								};
+			//for every distant system [id2] that system [id] is connected to
+			for(var id2 in ROUTE_LOOKUP[id]) {
+				if((id < id2 ? ROUTE_LOOKUP[id][id2] : ROUTE_LOOKUP[id2][id]).dist === dist - 1) {
+					//system [id] is ALSO connected to all of system [id2]'s adjacent connections
+					for(var id3 in ROUTE_LOOKUP[id2]) {
+						//ignoring connections that system [id] is already connected to
+						if(id !== id3 && (id2 < id3 ? ROUTE_LOOKUP[id2][id3] : ROUTE_LOOKUP[id3][id2]).dist === 1 && !ROUTE_LOOKUP[id][id3]) {
+							var route = Array.prototype.slice.call((id < id2 ? ROUTE_LOOKUP[id][id2] : ROUTE_LOOKUP[id2][id]).route);
+							if(id < id3) {
+								if(id2 < id) { route.reverse(); }
+								route.push(id2);
+								ROUTE_LOOKUP[id][id3] = { dist: dist, route: route };
+								ROUTE_LOOKUP[id3][id] = true;
 							}
-							var connections3 = ROUTE_LOOKUP[id3];
-							if(!connections3[id] && connections2[id].route.indexOf(id2) === -1) {
-								route = Array.prototype.slice.call(connections2[id].route);
+							else {
+								if(id < id2) { route.reverse(); }
 								route.unshift(id2);
-								connections3[id] = {
-									dist: dist,
-									route: route
-								};
+								ROUTE_LOOKUP[id3][id] = { dist: dist, route: route };
+								ROUTE_LOOKUP[id][id3] = true;
 							}
 						}
 					}
 				}
 			}
 		}
+		console.log("Finished calculating all solar system connections of length " + dist + "!");
 	}
 	console.log("Calculated all solar system connections up to " + MAX_DIST_TO_PRECALCULATE + " jumps apart!");
 
@@ -83,11 +79,17 @@ define([
 	}
 
 	function getRouteBetween(fromSystemId, toSystemId, security) {
-		return ROUTE_LOOKUP[fromSystemId][toSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId].route || null;
+		var minSystemId = Math.min(fromSystemId, toSystemId);
+		var maxSystemId = Math.max(fromSystemId, toSystemId);
+		return ROUTE_LOOKUP[fromSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId] &&
+				ROUTE_LOOKUP[fromSystemId][toSystemId].route || null;
 	}
 
 	function getJumpsBetween(fromSystemId, toSystemId, security) {
-		return ROUTE_LOOKUP[fromSystemId][toSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId].dist || -1;
+		var minSystemId = Math.min(fromSystemId, toSystemId);
+		var maxSystemId = Math.max(fromSystemId, toSystemId);
+		return ROUTE_LOOKUP[fromSystemId] && ROUTE_LOOKUP[fromSystemId][toSystemId] &&
+				ROUTE_LOOKUP[fromSystemId][toSystemId].dist || -1;
 
 		/*
 		if(!loaded) {
